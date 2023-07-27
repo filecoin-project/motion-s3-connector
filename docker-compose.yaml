@@ -1,0 +1,14 @@
+services:
+  motion:
+    image: ghcr.io/filecoin-project/motion:main
+    ports:
+      - "40080:40080"
+  
+  cloudserver:
+    image: ghcr.io/filecoin-project/motion-cloudserver:main
+    environment:
+      REMOTE_MANAGEMENT_DISABLE: 1
+      S3DATA: 'multiple'
+      MOTION_HOST: 'motion'
+    ports:
+      - "8000:8000"
