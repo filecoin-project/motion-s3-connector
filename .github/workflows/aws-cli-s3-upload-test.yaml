@@ -1,0 +1,18 @@
+name: AWS CLI S3 Upload Test
+
+on: [ pull_request ]
+
+jobs:
+  test:
+    name: Run Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Start Containers
+        run: docker-compose -f "docker-compose.yaml" up -d --build
+      - name: Test
+        uses: ./.github/actions/aws-cli-s3-upload-test
+      - name: Stop Containers
+        if: always()
+        run: docker-compose -f "docker-compose.yaml" down
