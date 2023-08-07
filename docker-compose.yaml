@@ -3,7 +3,10 @@ services:
     image: ghcr.io/filecoin-project/motion:main
     ports:
       - "40080:40080"
-  
+    environment:
+      - MOTION_STORE_DIR=/usr/src/app/storage
+    volumes:
+      - ${MOTION_HOME:-$HOME/.motion}/storage:/usr/src/app/storage
   cloudserver:
     image: ghcr.io/filecoin-project/motion-cloudserver:main
     environment:
@@ -12,3 +15,6 @@ services:
       MOTION_HOST: 'motion'
     ports:
       - "8000:8000"
+    volumes:
+      - ${MOTION_HOME:-$HOME/.motion}/zenko/localData:/usr/src/app/localData
+      - ${MOTION_HOME:-$HOME/.motion}/zenko/localMetadata:/usr/src/app/localMetadata
