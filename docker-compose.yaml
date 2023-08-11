@@ -18,3 +18,4 @@ services:
     volumes:
       - ${MOTION_HOME:-$HOME/.motion}/zenko/localData:/usr/src/app/localData
       - ${MOTION_HOME:-$HOME/.motion}/zenko/localMetadata:/usr/src/app/localMetadata
+      - ${S3AUTH_CONFIG:-$PWD/authdata.json}:/usr/src/app/conf/authdata.json
