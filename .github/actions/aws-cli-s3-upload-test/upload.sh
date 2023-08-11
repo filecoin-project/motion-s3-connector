@@ -3,11 +3,6 @@
 # Create a test file to upload
 echo fish > upload.txt
 
-# Export the AWS credentials and region
-export AWS_ACCESS_KEY_ID=accessKey1
-export AWS_SECRET_ACCESS_KEY=verySecretKey1
-export AWS_DEFAULT_REGION=location-motion-v1
-
 # Create a test bucket, retrying if it fails.
 # We do this to ensure we're not failing too early on a connection error.
 RETRY_NUM=3

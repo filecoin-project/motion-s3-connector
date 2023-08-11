@@ -1,28 +1,28 @@
-# motion-s3-connector
+# Motion S3 Connector
 
-The Motion S3 Connector is an example of how clients can use existing Amazon S3 client libraries to store and retrieve data with [Motion](https://github.com/filecoin-project/motion), an API layer designed to make it easy for software vendors to integrate Filecoin as a storage layer. The connector is a [Zenko CloudServer](https://www.zenko.io/cloudserver/), an Amazon S3 compatible object storage server, with a custom Motion client that translates S3 requests into Motion requests and vice versa.
+The Motion S3 Connector showcases a bridge between the Amazon S3 client libraries and [Motion](https://github.com/filecoin-project/motion). By leveraging this connector, users can seamlessly store and fetch data through Motion, an API layer crafted to facilitate Filecoin storage layer integration. This connector utilizes a [Zenko CloudServer](https://www.zenko.io/cloudserver/) - an Amazon S3-compatible storage server - and integrates a tailored Motion client. This client is responsible for converting S3 requests to Motion requests and vice versa.
 
-## Zenko CloudServer with Motion Storage Backend
+## Setting Up Zenko CloudServer with Motion Storage Backend
 
 ### Prerequisites
 
-* Docker container runtime for running docker-compose. We'll be using [Docker](https://docs.docker.com/install/).
-* [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html) for interacting with CloudServer.
-* AWS test credentials in the provided `.env` need to be used for authenticating with CloudServer. See [AWS CLI Configuration](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html) for more information on other ways to use these credentials.
+- [Docker](https://docs.docker.com/install/) for deploying via `docker-compose`.
+- [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html) to communicate with the CloudServer.
+- AWS test credentials provided in `.env` are required for CloudServer authentication. For alternative methods, refer to [AWS CLI Configuration](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html).
 
-### Start Motion and CloudServer
+### Launching Motion and CloudServer
 
-Both the Motion API server and CloudServer can be started by running:
+Initiate both the Motion API server and the CloudServer with:
 
 ```bash
 docker compose up
 ```
 
-The above command starts the Motion HTTP API exposed on the default listening address http://localhost:40080 and a CloudServer on https://localhost:8000.
+This starts the Motion HTTP API at `http://localhost:40080` and the CloudServer at `https://localhost:8000`.
 
-### Export AWS Credentials
+### Configuring AWS CLI with Test Credentials
 
-The AWS CLI needs to be configured with the following AWS test credentials. The credentials can be exported by running:
+To set up the AWS CLI with the designated test credentials, execute:
 
 ```bash
 export AWS_ACCESS_KEY_ID=accessKey1
@@ -30,50 +30,55 @@ export AWS_SECRET_ACCESS_KEY=verySecretKey1
 export AWS_DEFAULT_REGION=location-motion-v1
 ```
 
-Our local CloudServer has been set up with a test user with these credentials. The default region `location-motion-v1` tells CloudServer to use the Motion storage backend.
+These credentials correspond to a test user on our local CloudServer. The predefined region `location-motion-v1` directs CloudServer to employ the Motion storage backend.
 
-### Create a bucket
+See [Overriding Default AWS Credentials](#overriding-default-aws-credentials) for instructions on how to override the default credentials accepted by the server side.
 
-With the Motion API server and CloudServer running, we can create a bucket using the AWS CLI `s3 mb` command:
+### Bucket Operations
 
-```bash
-aws --endpoint-url http://localhost:8000 s3 mb s3://mybucket
-```
+1. **Creating a Bucket**  
+   After starting the servers, generate a bucket using:
 
-The `--endpoint-url` flag tells the AWS CLI to use our local CloudServer endpoint instead of the default Amazon S3 endpoint.
+   ```bash
+   aws --endpoint-url http://localhost:8000 s3 mb s3://mybucket
+   ```
 
-### Upload an object
+2. **Uploading Objects**  
+   Transfer a file to the new bucket:
 
-We can upload an object to the bucket we just created using the AWS CLI `s3 cp` command:
+   ```bash
+   aws --endpoint-url http://localhost:8000 s3 cp README.md s3://mybucket
+   ```
 
-```bash
-aws --endpoint-url http://localhost:8000 s3 cp README.md s3://mybucket
-```
+   Alternatively, utilize:
 
-We can also use the `s3api put-object` command to upload an object:
+   ```bash
+   aws --endpoint-url http://localhost:8000 s3api put-object --bucket mybucket --key README.md --body README.md
+   ```
 
-```bash
-aws --endpoint-url http://localhost:8000 s3api put-object --bucket mybucket --key README.md --body README.md
-```
+3. **Listing Objects**  
+   To view the contents of your bucket:
 
-### List objects
+   ```bash
+   aws --endpoint-url http://localhost:8000 s3 ls s3://mybucket
+   ```
 
-We can list the objects in the bucket we just created using the AWS CLI `s3 ls` command:
+4. **Downloading Objects**  
+   Retrieve an uploaded object with:
 
-```bash
-aws --endpoint-url http://localhost:8000 s3 ls s3://mybucket
-```
+   ```bash
+   aws --endpoint-url http://localhost:8000 s3 cp s3://mybucket/README.md README.md
+   ```
 
-### Download an object
+   Or, use:
 
-We can download the object we just uploaded using the AWS CLI `s3 cp` command:
+   ```bash
+   aws --endpoint-url http://localhost:8000 s3api get-object --bucket mybucket --key README.md README.md
+   ```
+## Overriding Default AWS Credentials
 
-```bash
-aws --endpoint-url http://localhost:8000 s3 cp s3://mybucket/README.md README.md
-```
+In scenarios where you wish to use different credentials than the default ones, the Motion S3 Connector allows users to override the default AWS credentials. This can be particularly useful for more advanced use-cases, testing, or specific security measures.
 
-We can also use the `s3api get-object` command to download an object:
+### ***How to Override Credentials***
 
-```bash
-aws --endpoint-url http://localhost:8000 s3api get-object --bucket mybucket --key README.md README.md
-```
+To update the AWS credentials, edit the [`authdata.json`](authdata.json) file with your preferred access credentials. After making the changes, restart Docker Compose to apply the updated credentials on the server.
