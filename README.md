@@ -9,6 +9,8 @@ The Motion S3 Connector showcases a bridge between the Amazon S3 client librarie
 - [Docker](https://docs.docker.com/install/) for deploying via `docker-compose`.
 - [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html) to communicate with the CloudServer.
 - AWS test credentials provided in `.env` are required for CloudServer authentication. For alternative methods, refer to [AWS CLI Configuration](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html).
+- one or more FileCoin Storage provider address specified as comma separated list under `MOTION_STORAGE_PROVIDERS` environment variable.
+- Filecoin wallet key with sufficient FileCoin funds specified as hex encoded string under `MOTION_WALLET_KEY` environment variable.
 
 ### Launching Motion and CloudServer
 
