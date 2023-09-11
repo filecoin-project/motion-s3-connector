@@ -1,0 +1,13 @@
+name: Check
+
+on: [ pull_request ]
+
+jobs:
+  test:
+    name: Docker Compose
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Check Docker Compose file
+        run: docker compose up --dry-run
