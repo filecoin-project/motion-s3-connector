@@ -6,7 +6,6 @@ services:
       MONGO_INITDB_ROOT_USERNAME: ${MONGODB_AUTH_USERNAME:-root}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_AUTH_PASSWORD:-changeme}
       MONGO_INITDB_DATABASE: ${MONGODB_DATABASE:-metadata}
-    user: 'mongodb'
     ports:
       - '27017:27017'
     volumes:
