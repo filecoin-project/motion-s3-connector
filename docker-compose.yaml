@@ -10,6 +10,14 @@ services:
       - '27017:27017'
     volumes:
       - ${MOTION_HOME:-$HOME/.motion}/zenko/mongodbMetadata:/data/db
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - echo 'db.runCommand("ping").ok' | mongo mongo:27017/${MONGODB_DATABASE:-metadata} --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
   motion:
     image: ghcr.io/filecoin-project/motion:main
     ports:
@@ -37,4 +45,4 @@ services:
       - ${S3AUTH_CONFIG:-$PWD/authdata.json}:/usr/src/app/conf/authdata.json
     depends_on:
       mongodb:
-        condition: service_started
+        condition: service_healthy
