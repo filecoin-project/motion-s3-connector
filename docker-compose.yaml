@@ -15,9 +15,9 @@ services:
         - CMD-SHELL
         - echo 'db.runCommand("ping").ok' | mongo mongo:27017/${MONGODB_DATABASE:-metadata} --quiet
       interval: 10s
-      timeout: 10s
-      retries: 5
-      start_period: 20s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
   motion:
     image: ghcr.io/filecoin-project/motion:main
     ports:
