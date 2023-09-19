@@ -10,13 +10,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
       - name: Start Containers
-        run: docker compose -f "docker-compose.yaml" up  --build
+        run: docker compose -f "docker-compose.yaml" up -d --build
       - name: Test
         env:
           AWS_ACCESS_KEY_ID: 'accessKey1'
           AWS_SECRET_ACCESS_KEY: 'verySecretKey1'
           AWS_DEFAULT_REGION: 'location-motion-v1'
         uses: ./.github/actions/aws-cli-s3-upload-test
+      - name: Dump logs
+        if: failure()
+        run: docker compose logs
       - name: Stop Containers
         if: always()
         run: docker compose -f 'docker-compose.yaml' down
