@@ -1,6 +1,7 @@
 services:
   mongodb:
     image: mongo:6.0
+    hostname: mongodb
     restart: always
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGODB_AUTH_USERNAME:-root}
@@ -11,12 +12,10 @@ services:
     volumes:
       - ${MOTION_HOME:-$HOME/.motion}/zenko/mongodbMetadata:/data/db
     healthcheck:
-      test:
-        - CMD-SHELL
-        - echo 'db.runCommand("ping").ok' | mongo mongo:27017/${MONGODB_DATABASE:-metadata} --quiet
+      test: mongo --eval 'db.runCommand("ping").ok' localhost:27017/${MONGODB_DATABASE:-metadata} --quiet
       interval: 10s
       timeout: 5s
-      retries: 30
+      retries: 10
       start_period: 30s
   motion:
     image: ghcr.io/filecoin-project/motion:main
