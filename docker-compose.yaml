@@ -11,12 +11,12 @@ services:
       - '27017:27017'
     volumes:
       - ${MOTION_HOME:-$HOME/.motion}/zenko/mongodbMetadata:/data/db
-    healthcheck:
-      test: mongo --eval 'db.runCommand("ping").ok' localhost:27017/${MONGODB_DATABASE:-metadata} --quiet
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
+#    healthcheck:
+#      test: mongo --eval 'db.runCommand("ping").ok' localhost:27017/${MONGODB_DATABASE:-metadata} --quiet
+#      interval: 10s
+#      timeout: 5s
+#      retries: 10
+#      start_period: 30s
   motion:
     image: ghcr.io/filecoin-project/motion:main
     ports:
@@ -27,6 +27,7 @@ services:
       - ${MOTION_HOME:-$HOME/.motion}/storage:/usr/src/app/storage
   cloudserver:
     image: ghcr.io/filecoin-project/motion-cloudserver:main
+    restart: always
     environment:
       REMOTE_MANAGEMENT_DISABLE: 1
       S3DATA: 'multiple'
@@ -44,4 +45,4 @@ services:
       - ${S3AUTH_CONFIG:-$PWD/authdata.json}:/usr/src/app/conf/authdata.json
     depends_on:
       mongodb:
-        condition: service_healthy
+        condition: service_started
