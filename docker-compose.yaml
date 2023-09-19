@@ -1,4 +1,16 @@
 services:
+  mongodb:
+    image: mongo:6.0
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_AUTH_USERNAME:-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_AUTH_PASSWORD:-changeme}
+      MONGO_INITDB_DATABASE: ${MONGODB_DATABASE:-metadata}
+    user: 'mongodb'
+    ports:
+      - '27017:27017'
+    volumes:
+      - ${MOTION_HOME:-$HOME/.motion}/zenko/mongodbMetadata:/data/db
   motion:
     image: ghcr.io/filecoin-project/motion:main
     ports:
@@ -13,6 +25,11 @@ services:
       REMOTE_MANAGEMENT_DISABLE: 1
       S3DATA: 'multiple'
       MOTION_HOST: 'motion'
+      S3METADATA: 'mongodb'
+      MONGODB_HOSTS: 'mongodb:27017'
+      MONGODB_AUTH_USERNAME: ${MONGODB_AUTH_USERNAME:-root}
+      MONGODB_AUTH_PASSWORD: ${MONGODB_AUTH_PASSWORD:-changeme}
+      MONGODB_DATABASE: ${MONGODB_DATABASE:-metadata}
     ports:
       - "8000:8000"
     volumes:
