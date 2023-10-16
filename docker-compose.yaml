@@ -121,7 +121,7 @@ services:
       - singularity_api
 
   cloudserver:
-    image: ghcr.io/filecoin-project/motion-cloudserver:${MOTION_CLOUDSERVER_VERSION:-0.1.0}
+    image: ghcr.io/filecoin-project/motion-cloudserver:${MOTION_CLOUDSERVER_VERSION:-0.1.1}
     environment:
       REMOTE_MANAGEMENT_DISABLE: 1
       S3DATA: 'multiple'
