@@ -142,10 +142,16 @@ services:
 
   cloudserver:
     image: ghcr.io/filecoin-project/motion-cloudserver:${MOTION_CLOUDSERVER_VERSION:-0.1.1}
+    restart: always
     environment:
       REMOTE_MANAGEMENT_DISABLE: 1
       S3DATA: 'multiple'
       MOTION_HOST: 'motion'
+      S3METADATA: 'mongodb'
+      MONGODB_HOSTS: 'mongodb:27017'
+      MONGODB_AUTH_USERNAME: ${MONGODB_AUTH_USERNAME:-root}
+      MONGODB_AUTH_PASSWORD: ${MONGODB_AUTH_PASSWORD:-changeme}
+      MONGODB_DATABASE: ${MONGODB_DATABASE:-metadata}
     ports:
       - "8000:8000"
     volumes:
@@ -153,7 +159,10 @@ services:
       - cloudserver-localmetadata-volume:/usr/src/app/localMetadata
       - ${S3AUTH_CONFIG:-$PWD/authdata.json}:/usr/src/app/conf/authdata.json
     depends_on:
-      - motion
+      motion:
+        condition: service_started
+      mongodb:
+        condition: service_started
 
 volumes:
   motion-singularity-volume:
