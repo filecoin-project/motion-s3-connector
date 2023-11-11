@@ -27,9 +27,10 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_AUTH_PASSWORD:-changeme}
       MONGO_INITDB_DATABASE: ${MONGODB_DATABASE:-metadata}
     ports:
-      - '27017:27017'
+      - 27017:27017
     volumes:
       - ${MOTION_HOME:-$HOME/.motion}/zenko/mongodbMetadata:/data/db
+      - ./mongod.conf:/etc/mongod.conf
 #    healthcheck:
 #      test: mongo --eval 'db.runCommand("ping").ok' localhost:27017/${MONGODB_DATABASE:-metadata} --quiet
 #      interval: 10s
@@ -37,13 +38,11 @@ services:
 #      retries: 10
 #      start_period: 30s
 
-  singularity_api:
+  singularity_admin_init:
     image: ghcr.io/data-preservation-programs/singularity:${SINGULARITY_VERSION:-v0.5.9}
-    command: run api --bind :9090
+    command: admin init
     volumes:
       - motion-singularity-volume:/usr/src/app/storage
-    ports:
-      - 9090:9090
     environment:
       DATABASE_CONNECTION_STRING: postgres://${SINGULARITY_DB_USER:-postgres}:${SINGULARITY_DB_PASSWORD:-postgres}@db:5432/${SINGULARITY_DB_NAME:-singularity}
       LOTUS_TEST:
@@ -52,6 +51,27 @@ services:
     depends_on:
       db:
         condition: service_healthy
+
+  singularity_api:
+    image: ghcr.io/data-preservation-programs/singularity:${SINGULARITY_VERSION:-v0.5.9}
+    command: run api --bind :9091
+    volumes:
+      - motion-singularity-volume:/usr/src/app/storage
+    ports:
+      - 9091:9091
+    environment:
+      DATABASE_CONNECTION_STRING: postgres://${SINGULARITY_DB_USER:-postgres}:${SINGULARITY_DB_PASSWORD:-postgres}@db:5432/${SINGULARITY_DB_NAME:-singularity}
+      LOTUS_TEST:
+      LOTUS_API:
+      LOTUS_TOKEN:
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      singularity_admin_init:
+        condition: service_completed_successfully
 
   singularity_dataset_worker:
     image: ghcr.io/data-preservation-programs/singularity:${SINGULARITY_VERSION:-v0.5.9}
@@ -64,8 +84,8 @@ services:
       LOTUS_API:
       LOTUS_TOKEN:
     depends_on:
-      db:
-        condition: service_healthy
+      singularity_admin_init:
+        condition: service_completed_successfully
 
   singularity_deal_pusher:
     image: ghcr.io/data-preservation-programs/singularity:${SINGULARITY_VERSION:-v0.5.9}
@@ -78,8 +98,8 @@ services:
       LOTUS_API:
       LOTUS_TOKEN:
     depends_on:
-      db:
-        condition: service_healthy
+      singularity_admin_init:
+        condition: service_completed_successfully
 
   singularity_deal_tracker:
     image: ghcr.io/data-preservation-programs/singularity:${SINGULARITY_VERSION:-v0.5.9}
@@ -91,9 +111,10 @@ services:
       LOTUS_TEST:
       LOTUS_API:
       LOTUS_TOKEN:
+      MARKET_DEAL_URL:
     depends_on:
-      db:
-        condition: service_healthy
+      singularity_admin_init:
+        condition: service_completed_successfully
 
   singularity_content_provider:
     image: ghcr.io/data-preservation-programs/singularity:${SINGULARITY_VERSION:-v0.5.9}
@@ -108,13 +129,13 @@ services:
       LOTUS_API:
       LOTUS_TOKEN:
     depends_on:
-      db:
-        condition: service_healthy
+      singularity_admin_init:
+        condition: service_completed_successfully
 
   motion:
     platform: linux/amd64
     image: ghcr.io/filecoin-project/motion:${MOTION_VERSION:-v0.2.3}
-    entrypoint: motion --experimentalSingularityStore --experimentalRemoteSingularityAPIUrl=http://singularity_api:9090 --experimentalSingularityContentURLTemplate=${SINGULARITY_CONTENT_PROVIDER_DOMAIN:-http://singularity_content_provider:7778}/piece/{PIECE_CID}
+    entrypoint: motion --experimentalSingularityStore --experimentalRemoteSingularityAPIUrl=singularity_api:9091 --experimentalSingularityContentURLTemplate=${SINGULARITY_CONTENT_PROVIDER_DOMAIN:-http://singularity_content_provider:7778}/piece/{PIECE_CID}
     ports:
       - 40080:40080
     environment:
