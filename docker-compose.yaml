@@ -5,7 +5,7 @@ services:
     image: postgres:15
     restart: always
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -14,7 +14,7 @@ services:
       POSTGRES_PASSWORD: ${SINGULARITY_DB_PASSWORD:-postgres}
       POSTGRES_DB: ${SINGULARITY_DB_NAME:-singularity}
     volumes:
-      - motion-singularity-volume:/var/lib/postgresql/data
+      - motion-singularity-volume:/var/lib/postgresql/15/data
     ports:
       - 5432:5432
 
