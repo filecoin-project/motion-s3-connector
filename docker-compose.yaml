@@ -30,13 +30,12 @@ services:
       - 27017:27017
     volumes:
       - ${MOTION_HOME:-$HOME/.motion}/zenko/mongodbMetadata:/data/db
-      - ./mongod.conf:/etc/mongod.conf
-#    healthcheck:
-#      test: mongo --eval 'db.runCommand("ping").ok' localhost:27017/${MONGODB_DATABASE:-metadata} --quiet
-#      interval: 10s
-#      timeout: 5s
-#      retries: 10
-#      start_period: 30s
+    healthcheck:
+      test: mongo --eval 'db.runCommand("ping").ok' localhost:27017/${MONGODB_DATABASE:-metadata} --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   singularity_admin_init:
     image: ghcr.io/data-preservation-programs/singularity:${SINGULARITY_VERSION:-v0.5.9}
@@ -54,18 +53,18 @@ services:
 
   singularity_api:
     image: ghcr.io/data-preservation-programs/singularity:${SINGULARITY_VERSION:-v0.5.9}
-    command: run api --bind :9091
+    command: run api --bind :9090
     volumes:
       - motion-singularity-volume:/usr/src/app/storage
     ports:
-      - 9091:9091
+      - 9090:9090
     environment:
       DATABASE_CONNECTION_STRING: postgres://${SINGULARITY_DB_USER:-postgres}:${SINGULARITY_DB_PASSWORD:-postgres}@db:5432/${SINGULARITY_DB_NAME:-singularity}
       LOTUS_TEST:
       LOTUS_API:
       LOTUS_TOKEN:
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9091/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:9090/health"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -135,7 +134,7 @@ services:
   motion:
     platform: linux/amd64
     image: ghcr.io/filecoin-project/motion:${MOTION_VERSION:-v0.2.3}
-    entrypoint: motion --experimentalSingularityStore --experimentalRemoteSingularityAPIUrl=singularity_api:9091 --experimentalSingularityContentURLTemplate=${SINGULARITY_CONTENT_PROVIDER_DOMAIN:-http://singularity_content_provider:7778}/piece/{PIECE_CID}
+    entrypoint: motion --experimentalSingularityStore --experimentalRemoteSingularityAPIUrl=singularity_api:9090 --experimentalSingularityContentURLTemplate=${SINGULARITY_CONTENT_PROVIDER_DOMAIN:-http://singularity_content_provider:7778}/piece/{PIECE_CID}
     ports:
       - 40080:40080
     environment:
@@ -182,7 +181,7 @@ services:
       motion:
         condition: service_started
       mongodb:
-        condition: service_started
+        condition: service_healthy
 
 volumes:
   motion-singularity-volume:
