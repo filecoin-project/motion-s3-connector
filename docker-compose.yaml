@@ -18,6 +18,20 @@ services:
     ports:
       - 5432:5432
 
+  singularity_admin_init:
+    image: ghcr.io/data-preservation-programs/singularity:${SINGULARITY_VERSION:-v0.5.9}
+    command: admin init
+    volumes:
+      - motion-singularity-volume:/usr/src/app/storage
+    environment:
+      DATABASE_CONNECTION_STRING: postgres://${SINGULARITY_DB_USER:-postgres}:${SINGULARITY_DB_PASSWORD:-postgres}@db:5432/${SINGULARITY_DB_NAME:-singularity}
+      LOTUS_TEST:
+      LOTUS_API:
+      LOTUS_TOKEN:
+    depends_on:
+      db:
+        condition: service_healthy
+
   singularity_api:
     image: ghcr.io/data-preservation-programs/singularity:${SINGULARITY_VERSION:-v0.5.9}
     command: run api --bind :9090
@@ -31,8 +45,8 @@ services:
       LOTUS_API:
       LOTUS_TOKEN:
     depends_on:
-      db:
-        condition: service_healthy
+      singularity_admin_init:
+        condition: service_completed_successfully
 
   singularity_dataset_worker:
     image: ghcr.io/data-preservation-programs/singularity:${SINGULARITY_VERSION:-v0.5.9}
@@ -45,8 +59,8 @@ services:
       LOTUS_API:
       LOTUS_TOKEN:
     depends_on:
-      db:
-        condition: service_healthy
+      singularity_admin_init:
+        condition: service_completed_successfully
 
   singularity_deal_pusher:
     image: ghcr.io/data-preservation-programs/singularity:${SINGULARITY_VERSION:-v0.5.9}
@@ -73,8 +87,8 @@ services:
       LOTUS_API:
       LOTUS_TOKEN:
     depends_on:
-      db:
-        condition: service_healthy
+      singularity_admin_init:
+        condition: service_completed_successfully
 
   singularity_content_provider:
     image: ghcr.io/data-preservation-programs/singularity:${SINGULARITY_VERSION:-v0.5.9}
@@ -89,8 +103,8 @@ services:
       LOTUS_API:
       LOTUS_TOKEN:
     depends_on:
-      db:
-        condition: service_healthy
+      singularity_admin_init:
+        condition: service_completed_successfully
 
   motion:
     platform: linux/amd64
