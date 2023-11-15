@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  motion:
+    platform: linux/amd64
+    image: ghcr.io/filecoin-project/motion:${MOTION_VERSION:-v0.2.3}
+    ports:
+      - 40080:40080
+    environment:
+      - MOTION_STORE_DIR=/usr/src/app/storage
+    volumes:
+      - motion-singularity-volume:/usr/src/app/storage
+
+  cloudserver:
+    platform: linux/amd64
+    image: ghcr.io/filecoin-project/motion-cloudserver:${MOTION_CLOUDSERVER_VERSION:-0.1.1}
+    environment:
+      REMOTE_MANAGEMENT_DISABLE: 1
+      S3DATA: 'multiple'
+      MOTION_HOST: 'motion'
+    ports:
+      - "8000:8000"
+    volumes:
+      - ${MOTION_HOME:-$HOME/.motion}/zenko/localData:/usr/src/app/localData
+      - ${MOTION_HOME:-$HOME/.motion}/zenko/localMetadata:/usr/src/app/localMetadata
+      - ${S3AUTH_CONFIG:-$PWD/../authdata.json}:/usr/src/app/conf/authdata.json
+    depends_on:
+      - motion
+
+volumes:
+  motion-singularity-volume:
+    driver: local
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: ${MOTION_HOME:-$HOME/.motion}
