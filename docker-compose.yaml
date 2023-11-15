@@ -44,6 +44,11 @@ services:
       LOTUS_TEST:
       LOTUS_API:
       LOTUS_TOKEN:
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9090/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     depends_on:
       singularity_admin_init:
         condition: service_completed_successfully
@@ -109,7 +114,7 @@ services:
   motion:
     platform: linux/amd64
     image: ghcr.io/filecoin-project/motion:${MOTION_VERSION:-v0.2.3}
-    entrypoint: motion --experimentalSingularityStore --experimentalRemoteSingularityAPIUrl=http://singularity_api:9090 --experimentalSingularityContentURLTemplate=${SINGULARITY_CONTENT_PROVIDER_DOMAIN:-http://singularity_content_provider:7778}/piece/{PIECE_CID}
+    entrypoint: motion --experimentalSingularityStore --experimentalRemoteSingularityAPIUrl=singularity_api:9090 --experimentalSingularityContentURLTemplate=${SINGULARITY_CONTENT_PROVIDER_DOMAIN:-http://singularity_content_provider:7778}/piece/{PIECE_CID}
     ports:
       - 40080:40080
     environment:
@@ -132,7 +137,8 @@ services:
     volumes:
       - motion-singularity-volume:/usr/src/app/storage
     depends_on:
-      - singularity_api
+      singularity_api:
+        condition: service_healthy
 
   cloudserver:
     image: ghcr.io/filecoin-project/motion-cloudserver:${MOTION_CLOUDSERVER_VERSION:-0.1.1}
