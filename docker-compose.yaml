@@ -18,6 +18,20 @@ services:
     ports:
       - 5432:5432
 
+  singularity_admin_init:
+    image: ghcr.io/data-preservation-programs/singularity:${SINGULARITY_VERSION:-v0.5.9}
+    command: admin init
+    volumes:
+      - motion-singularity-volume:/usr/src/app/storage
+    environment:
+      DATABASE_CONNECTION_STRING: postgres://${SINGULARITY_DB_USER:-postgres}:${SINGULARITY_DB_PASSWORD:-postgres}@db:5432/${SINGULARITY_DB_NAME:-singularity}
+      LOTUS_TEST:
+      LOTUS_API:
+      LOTUS_TOKEN:
+    depends_on:
+      db:
+        condition: service_healthy
+
   singularity_api:
     image: ghcr.io/data-preservation-programs/singularity:${SINGULARITY_VERSION:-v0.5.9}
     command: run api --bind :9090
@@ -30,9 +44,14 @@ services:
       LOTUS_TEST:
       LOTUS_API:
       LOTUS_TOKEN:
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9090/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     depends_on:
-      db:
-        condition: service_healthy
+      singularity_admin_init:
+        condition: service_completed_successfully
 
   singularity_dataset_worker:
     image: ghcr.io/data-preservation-programs/singularity:${SINGULARITY_VERSION:-v0.5.9}
@@ -45,8 +64,8 @@ services:
       LOTUS_API:
       LOTUS_TOKEN:
     depends_on:
-      db:
-        condition: service_healthy
+      singularity_admin_init:
+        condition: service_completed_successfully
 
   singularity_deal_pusher:
     image: ghcr.io/data-preservation-programs/singularity:${SINGULARITY_VERSION:-v0.5.9}
@@ -73,8 +92,8 @@ services:
       LOTUS_API:
       LOTUS_TOKEN:
     depends_on:
-      db:
-        condition: service_healthy
+      singularity_admin_init:
+        condition: service_completed_successfully
 
   singularity_content_provider:
     image: ghcr.io/data-preservation-programs/singularity:${SINGULARITY_VERSION:-v0.5.9}
@@ -89,13 +108,13 @@ services:
       LOTUS_API:
       LOTUS_TOKEN:
     depends_on:
-      db:
-        condition: service_healthy
+      singularity_admin_init:
+        condition: service_completed_successfully
 
   motion:
     platform: linux/amd64
     image: ghcr.io/filecoin-project/motion:${MOTION_VERSION:-v0.2.3}
-    entrypoint: motion --experimentalSingularityStore --experimentalRemoteSingularityAPIUrl=http://singularity_api:9090 --experimentalSingularityContentURLTemplate=${SINGULARITY_CONTENT_PROVIDER_DOMAIN:-http://singularity_content_provider:7778}/piece/{PIECE_CID}
+    entrypoint: motion --experimentalSingularityStore --experimentalRemoteSingularityAPIUrl=singularity_api:9090 --experimentalSingularityContentURLTemplate=${SINGULARITY_CONTENT_PROVIDER_DOMAIN:-http://singularity_content_provider:7778}/piece/{PIECE_CID}
     ports:
       - 40080:40080
     environment:
@@ -118,7 +137,8 @@ services:
     volumes:
       - motion-singularity-volume:/usr/src/app/storage
     depends_on:
-      - singularity_api
+      singularity_api:
+        condition: service_healthy
 
   cloudserver:
     image: ghcr.io/filecoin-project/motion-cloudserver:${MOTION_CLOUDSERVER_VERSION:-0.1.1}
