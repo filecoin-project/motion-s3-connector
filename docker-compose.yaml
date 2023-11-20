@@ -20,7 +20,7 @@ services:
 
   singularity_admin_init:
     image: ghcr.io/data-preservation-programs/singularity:${SINGULARITY_VERSION:-v0.5.9}
-    command: admin init
+    command: admin init --identity Motion
     volumes:
       - motion-singularity-volume:/usr/src/app/storage
     environment:
@@ -78,8 +78,8 @@ services:
       LOTUS_API:
       LOTUS_TOKEN:
     depends_on:
-      db:
-        condition: service_healthy
+      singularity_admin_init:
+        condition: service_completed_successfully
 
   singularity_deal_tracker:
     image: ghcr.io/data-preservation-programs/singularity:${SINGULARITY_VERSION:-v0.5.9}
@@ -149,8 +149,8 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ${MOTION_HOME:-$HOME/.motion}/zenko/localData:/usr/src/app/localData
-      - ${MOTION_HOME:-$HOME/.motion}/zenko/localMetadata:/usr/src/app/localMetadata
+      - cloudserver-localdata-volume:/usr/src/app/localData
+      - cloudserver-localmetadata-volume:/usr/src/app/localMetadata
       - ${S3AUTH_CONFIG:-$PWD/authdata.json}:/usr/src/app/conf/authdata.json
     depends_on:
       - motion
@@ -158,7 +158,7 @@ services:
 volumes:
   motion-singularity-volume:
     driver: local
-    driver_opts:
-      type: 'none'
-      o: 'bind'
-      device: ${MOTION_HOME:-$HOME/.motion}
+  cloudserver-localdata-volume:
+    driver: local
+  cloudserver-localmetadata-volume:
+    driver: local
