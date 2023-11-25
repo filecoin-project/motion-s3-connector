@@ -5,7 +5,7 @@ services:
     image: postgres:15
     restart: always
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -14,13 +14,33 @@ services:
       POSTGRES_PASSWORD: ${SINGULARITY_DB_PASSWORD:-postgres}
       POSTGRES_DB: ${SINGULARITY_DB_NAME:-singularity}
     volumes:
-      - motion-singularity-volume:/var/lib/postgresql/data
+      - motion-singularity-volume:/var/lib/postgresql/15/data
     ports:
       - 5432:5432
 
+  mongodb:
+    image: mongo:6.0
+    command: mongod --replSet rs0 --bind_ip_all --port 27017 --dbpath /data/db --keyFile /data/db/keyfile
+    hostname: mongodb
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_AUTH_USERNAME:-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_AUTH_PASSWORD:-changeme}
+      MONGO_INITDB_DATABASE: ${MONGODB_DATABASE:-metadata}
+    ports:
+      - 27017:27017
+    volumes:
+      - ${MOTION_HOME:-$HOME/.motion}/zenko/mongodbMetadata:/data/db
+    healthcheck:
+      test: mongosh --eval 'db.runCommand("ping").ok' localhost:27017/${MONGODB_DATABASE:-metadata} --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
   singularity_admin_init:
     image: ghcr.io/data-preservation-programs/singularity:${SINGULARITY_VERSION:-v0.5.9}
-    command: admin init --identity Motion
+    command: admin init
     volumes:
       - motion-singularity-volume:/usr/src/app/storage
     environment:
@@ -31,25 +51,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-
-  singularity_admin_init:
-    image: ghcr.io/data-preservation-programs/singularity:${SINGULARITY_VERSION:-v0.5.9}
-    command: admin init --identity Motion
-    volumes:
-      - motion-singularity-volume:/usr/src/app/storage
-    environment:
-      DATABASE_CONNECTION_STRING: postgres://${SINGULARITY_DB_USER:-postgres}:${SINGULARITY_DB_PASSWORD:-postgres}@db:5432/${SINGULARITY_DB_NAME:-singularity}
-      LOTUS_TEST:
-      LOTUS_API:
-      LOTUS_TOKEN:
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9090/health"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    depends_on:
-      singularity_admin_init:
-        condition: service_completed_successfully
 
   singularity_api:
     image: ghcr.io/data-preservation-programs/singularity:${SINGULARITY_VERSION:-v0.5.9}
@@ -110,6 +111,7 @@ services:
       LOTUS_TEST:
       LOTUS_API:
       LOTUS_TOKEN:
+      MARKET_DEAL_URL:
     depends_on:
       singularity_admin_init:
         condition: service_completed_successfully
@@ -156,28 +158,36 @@ services:
     volumes:
       - motion-singularity-volume:/usr/src/app/storage
     depends_on:
-      singularity_api:
-        condition: service_healthy
+      - singularity_api
 
   cloudserver:
     image: ghcr.io/filecoin-project/motion-cloudserver:${MOTION_CLOUDSERVER_VERSION:-0.1.1}
+    restart: always
     environment:
       REMOTE_MANAGEMENT_DISABLE: 1
       S3DATA: 'multiple'
       MOTION_HOST: 'motion'
+      S3METADATA: 'mongodb'
+      MONGODB_HOSTS: 'mongodb:27017'
+      MONGODB_AUTH_USERNAME: ${MONGODB_AUTH_USERNAME:-root}
+      MONGODB_AUTH_PASSWORD: ${MONGODB_AUTH_PASSWORD:-changeme}
+      MONGODB_DATABASE: ${MONGODB_DATABASE:-metadata}
     ports:
       - "8000:8000"
     volumes:
-      - cloudserver-localdata-volume:/usr/src/app/localData
-      - cloudserver-localmetadata-volume:/usr/src/app/localMetadata
+      - ${MOTION_HOME:-$HOME/.motion}/zenko/localData:/usr/src/app/localData
+      - ${MOTION_HOME:-$HOME/.motion}/zenko/localMetadata:/usr/src/app/localMetadata
       - ${S3AUTH_CONFIG:-$PWD/authdata.json}:/usr/src/app/conf/authdata.json
     depends_on:
-      - motion
+      motion:
+        condition: service_started
+      mongodb:
+        condition: service_healthy
 
 volumes:
   motion-singularity-volume:
     driver: local
-  cloudserver-localdata-volume:
-    driver: local
-  cloudserver-localmetadata-volume:
-    driver: local
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: ${MOTION_HOME:-$HOME/.motion}
