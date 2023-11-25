@@ -32,25 +32,6 @@ services:
       db:
         condition: service_healthy
 
-  singularity_admin_init:
-    image: ghcr.io/data-preservation-programs/singularity:${SINGULARITY_VERSION:-v0.5.9}
-    command: admin init --identity Motion
-    volumes:
-      - motion-singularity-volume:/usr/src/app/storage
-    environment:
-      DATABASE_CONNECTION_STRING: postgres://${SINGULARITY_DB_USER:-postgres}:${SINGULARITY_DB_PASSWORD:-postgres}@db:5432/${SINGULARITY_DB_NAME:-singularity}
-      LOTUS_TEST:
-      LOTUS_API:
-      LOTUS_TOKEN:
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9090/health"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    depends_on:
-      singularity_admin_init:
-        condition: service_completed_successfully
-
   singularity_api:
     image: ghcr.io/data-preservation-programs/singularity:${SINGULARITY_VERSION:-v0.5.9}
     command: run api --bind :9090
