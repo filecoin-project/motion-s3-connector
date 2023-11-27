@@ -2,6 +2,14 @@
 
 The Motion S3 Connector showcases a bridge between the Amazon S3 client libraries and [Motion](https://github.com/filecoin-project/motion). By leveraging this connector, users can seamlessly store and fetch data through Motion, an API layer crafted to facilitate Filecoin storage layer integration. This connector utilizes a [Zenko CloudServer](https://www.zenko.io/cloudserver/) - an Amazon S3-compatible storage server - and integrates a tailored Motion client. This client is responsible for converting S3 requests to Motion requests and vice versa.
 
+## Demos
+
+This repository contains two demo setups:
+1. [**local**](./local): local storage without Filecoin interaction.
+2. [**local-devnet**](local-devnet)[**local**](./local): full end-to-end S3 <-> Filecoin SP interaction using a local Boost Devnet.
+
+To run the demos, see README within each corresponding directory.
+
 ## Setting Up Zenko CloudServer with Motion Storage Backend
 
 ### Prerequisites

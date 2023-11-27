@@ -1,0 +1,190 @@
+version: '3.8'
+
+services:
+  db:
+    platform: linux/amd64
+    image: postgres:15
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    environment:
+      - POSTGRES_USER=${SINGULARITY_DB_USER:-postgres}
+      - POSTGRES_PASSWORD=${SINGULARITY_DB_PASSWORD:-postgres}
+      - POSTGRES_DB=${SINGULARITY_DB_NAME:-singularity}
+    volumes:
+      - ${MOTION_HOME}/data/singularity-db:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+
+  singularity_admin_init:
+    platform: linux/amd64
+    image: ghcr.io/data-preservation-programs/singularity${SINGULARITY_VERSION}
+    command: admin init
+    volumes:
+      - motion-singularity-volume:/usr/src/app/storage
+    environment:
+      - DATABASE_CONNECTION_STRING=postgres://${SINGULARITY_DB_USER:-postgres}:${SINGULARITY_DB_PASSWORD:-postgres}@db:5432/${SINGULARITY_DB_NAME:-singularity}
+      - LOTUS_TEST
+      - LOTUS_API
+      - LOTUS_TOKEN
+    depends_on:
+      db:
+        condition: service_healthy
+
+  singularity_api:
+    platform: linux/amd64
+    image: ghcr.io/data-preservation-programs/singularity${SINGULARITY_VERSION}
+    command: run api --bind :9091
+    volumes:
+      - motion-singularity-volume:/usr/src/app/storage
+    ports:
+      - 9091:9091
+    restart: unless-stopped
+    environment:
+      - DATABASE_CONNECTION_STRING=postgres://${SINGULARITY_DB_USER:-postgres}:${SINGULARITY_DB_PASSWORD:-postgres}@db:5432/${SINGULARITY_DB_NAME:-singularity}
+      - LOTUS_TEST
+      - LOTUS_API
+      - LOTUS_TOKEN
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9091/health" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      singularity_admin_init:
+        condition: service_completed_successfully
+
+  singularity_dataset_worker:
+    platform: linux/amd64
+    image: ghcr.io/data-preservation-programs/singularity${SINGULARITY_VERSION}
+    volumes:
+      - motion-singularity-volume:/usr/src/app/storage
+    command: run dataset-worker --min-interval 1s --max-interval 5s
+    restart: unless-stopped
+    environment:
+      - DATABASE_CONNECTION_STRING=postgres://${SINGULARITY_DB_USER:-postgres}:${SINGULARITY_DB_PASSWORD:-postgres}@db:5432/${SINGULARITY_DB_NAME:-singularity}
+      - LOTUS_TEST
+      - LOTUS_API
+      - LOTUS_TOKEN
+    depends_on:
+      singularity_admin_init:
+        condition: service_completed_successfully
+
+  singularity_deal_pusher:
+    platform: linux/amd64
+    image: ghcr.io/data-preservation-programs/singularity${SINGULARITY_VERSION}
+    volumes:
+      - motion-singularity-volume:/usr/src/app/storage
+    command: run deal-pusher
+    restart: unless-stopped
+    environment:
+      - DATABASE_CONNECTION_STRING=postgres://${SINGULARITY_DB_USER:-postgres}:${SINGULARITY_DB_PASSWORD:-postgres}@db:5432/${SINGULARITY_DB_NAME:-singularity}
+      - LOTUS_TEST
+      - LOTUS_API
+      - LOTUS_TOKEN
+    depends_on:
+      singularity_admin_init:
+        condition: service_completed_successfully
+
+  singularity_deal_tracker:
+    platform: linux/amd64
+    image: ghcr.io/data-preservation-programs/singularity${SINGULARITY_VERSION}
+    volumes:
+      - motion-singularity-volume:/usr/src/app/storage
+    command: run deal-tracker -i 1s
+    restart: unless-stopped
+    environment:
+      - DATABASE_CONNECTION_STRING=postgres://${SINGULARITY_DB_USER:-postgres}:${SINGULARITY_DB_PASSWORD:-postgres}@db:5432/${SINGULARITY_DB_NAME:-singularity}
+      - LOTUS_TEST
+      - LOTUS_API
+      - LOTUS_TOKEN
+      - MARKET_DEAL_URL
+    depends_on:
+      singularity_admin_init:
+        condition: service_completed_successfully
+
+  singularity_content_provider:
+    platform: linux/amd64
+    image: ghcr.io/data-preservation-programs/singularity${SINGULARITY_VERSION}
+    command: run content-provider --http-bind :7778
+    volumes:
+      - motion-singularity-volume:/usr/src/app/storage
+    ports:
+      - 7778:7778
+    restart: unless-stopped
+    environment:
+      - DATABASE_CONNECTION_STRING=postgres://${SINGULARITY_DB_USER:-postgres}:${SINGULARITY_DB_PASSWORD:-postgres}@db:5432/${SINGULARITY_DB_NAME:-singularity}
+      - LOTUS_TEST
+      - LOTUS_API
+      - LOTUS_TOKEN
+    depends_on:
+      singularity_admin_init:
+        condition: service_completed_successfully
+
+  motion:
+    platform: linux/amd64
+    image: ghcr.io/filecoin-project/motion:${MOTION_VERSION:-v0.2.3}
+    entrypoint:
+      - motion
+      - --experimentalSingularityStore
+      - --experimentalRemoteSingularityAPIUrl=singularity_api:9091
+      - --experimentalSingularityContentURLTemplate=http://singularity_content_provider:7778/piece/{PIECE_CID}
+    ports:
+      - 40080:40080
+    restart: unless-stopped
+    environment:
+      - MOTION_STORE_DIR=/usr/src/app/storage
+      - LOTUS_TEST
+      - MOTION_STORAGE_PROVIDERS
+      - MOTION_PRICE_PER_GIB_EPOCH
+      - MOTION_PRICE_PER_GIB
+      - MOTION_PRICE_PER_DEAL
+      - MOTION_DEAL_START_DELAY
+      - MOTION_DEAL_DURATION
+      - MOTION_SINGULARITY_MAX_CAR_SIZE
+      - MOTION_SINGULARITY_PACK_THRESHOLD
+      - MOTION_SINGULARITY_FORCE_PACK_AFTER
+      - MOTION_SINGULARITY_SCHEDULE_CRON
+      - MOTION_SINGULARITY_SCHEDULE_DEAL_NUMBER
+      - MOTION_WALLET_KEY
+      - MOTION_WALLET_ADDR
+      - MOTION_VERIFIED_DEAL
+      - MOTION_SINGULARITY_LOCAL_CLEANUP_INTERVAL
+    volumes:
+      - motion-singularity-volume:/usr/src/app/storage
+    depends_on:
+      singularity_api:
+        condition: service_healthy
+
+  cloudserver:
+    platform: linux/amd64
+    image: ghcr.io/filecoin-project/motion-cloudserver:${MOTION_CLOUDSERVER_VERSION:-0.1.1}
+    restart: unless-stopped
+    environment:
+      REMOTE_MANAGEMENT_DISABLE: 1
+      S3DATA: 'multiple'
+      MOTION_HOST: 'motion'
+    ports:
+      - "8000:8000"
+    volumes:
+      - ${MOTION_HOME:-${PWD}/data}/zenko/localData:/usr/src/app/localData
+      - ${MOTION_HOME:-${PWD}/data}/zenko/localMetadata:/usr/src/app/localMetadata
+      - ${S3AUTH_CONFIG:-${PWD}/../authdata.json}:/usr/src/app/conf/authdata.json
+    depends_on:
+      - motion
+
+volumes:
+  motion-singularity-volume:
+    driver: local
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: ${MOTION_HOME:-${PWD}/data}
+
+networks:
+  default:
+    name: devnet
+    external: true
