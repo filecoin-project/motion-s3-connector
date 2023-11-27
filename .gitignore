@@ -1,0 +1,4 @@
+local-devnet/devnet/data
+local-devnet/devnet/cache
+local-devnet/motion-stack/data
+local-devnet/motion-stack/.env.local
