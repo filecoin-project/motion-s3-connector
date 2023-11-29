@@ -6,7 +6,7 @@ The Motion S3 Connector showcases a bridge between the Amazon S3 client librarie
 
 This repository contains two demo setups:
 1. [**local**](./local): local storage without Filecoin interaction.
-2. [**local-devnet**](local-devnet)[**local**](./local): full end-to-end S3 <-> Filecoin SP interaction using a local Boost Devnet.
+2. [**local-devnet**](./local-devnet): full end-to-end S3 <-> Filecoin SP interaction using a local Boost Devnet.
 
 To run the demos, see README within each corresponding directory.
 
